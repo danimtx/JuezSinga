@@ -1,0 +1,24 @@
+[
+  {
+    "problema": "Suma de dos números",
+    "problemaId": 1,
+    "lenguajeId": 54,
+    "explicacion": "Código C++ estándar que lee dos enteros y suma.",
+    "payload": {
+      "problemaId": 1,
+      "lenguajeId": 54,
+      "codigoFuente": "#include <iostream>\n\nint main() {\n    int a, b;\n    while (std::cin >> a >> b) {\n        std::cout << a + b << std::endl;\n    }\n    return 0;\n}"
+    }
+  },
+  {
+    "problema": "El Doble de un número",
+    "problemaId": 2,
+    "lenguajeId": 54,
+    "explicacion": "Código C++ estándar que lee un entero y multiplica por 2.",
+    "payload": {
+      "problemaId": 2,
+      "lenguajeId": 54,
+      "codigoFuente": "#include <iostream>\n\nint main() {\n    int n;\n    while (std::cin >> n) {\n        std::cout << n * 2 << std::endl;\n    }\n    return 0;\n}"
+    }
+  }
+]

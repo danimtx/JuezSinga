@@ -1,0 +1,162 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "JuezSinGa - Carga de Problemas (GUID Automático)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Crear Problema Suma",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"pm.collectionVariables.set(\"idProblemaSuma\", jsonData);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"titulo\": \"Suma de dos números\",\r\n  \"descripcion\": \"Escribe un programa que lea dos números enteros y devuelva su suma.\",\r\n  \"limiteTiempo\": 1.0,\r\n  \"limiteMemoria\": 256,\r\n  \"unidad\": 2\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Problemas",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Problemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "2. Sincronizar Casos Suma",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "[\r\n  { \"entrada\": \"1 2\", \"salidaEsperada\": \"3\", \"esOculto\": false },\r\n  { \"entrada\": \"10 20\", \"salidaEsperada\": \"30\", \"esOculto\": false },\r\n  { \"entrada\": \"0 0\", \"salidaEsperada\": \"0\", \"esOculto\": false },\r\n  { \"entrada\": \"-5 5\", \"salidaEsperada\": \"0\", \"esOculto\": true },\r\n  { \"entrada\": \"100 200\", \"salidaEsperada\": \"300\", \"esOculto\": true },\r\n  { \"entrada\": \"-10 -20\", \"salidaEsperada\": \"-30\", \"esOculto\": true },\r\n  { \"entrada\": \"999 1\", \"salidaEsperada\": \"1000\", \"esOculto\": true }\r\n]",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Problemas/{{idProblemaSuma}}/casos/sincronizar",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Problemas",
+						"{{idProblemaSuma}}",
+						"casos",
+						"sincronizar"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "3. Crear Problema Doble",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();",
+							"pm.collectionVariables.set(\"idProblemaDoble\", jsonData);"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"titulo\": \"El Doble de un número\",\r\n  \"descripcion\": \"Escribe un programa que lea un número entero N y devuelva N * 2.\",\r\n  \"limiteTiempo\": 1.0,\r\n  \"limiteMemoria\": 256,\r\n  \"unidad\": 2\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Problemas",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Problemas"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "4. Sincronizar Casos Doble",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "[\r\n  { \"entrada\": \"2\", \"salidaEsperada\": \"4\", \"esOculto\": false },\r\n  { \"entrada\": \"5\", \"salidaEsperada\": \"10\", \"esOculto\": false },\r\n  { \"entrada\": \"0\", \"salidaEsperada\": \"0\", \"esOculto\": false },\r\n  { \"entrada\": \"-3\", \"salidaEsperada\": \"-6\", \"esOculto\": true },\r\n  { \"entrada\": \"100\", \"salidaEsperada\": \"200\", \"esOculto\": true },\r\n  { \"entrada\": \"-10\", \"salidaEsperada\": \"-20\", \"esOculto\": true },\r\n  { \"entrada\": \"1000\", \"salidaEsperada\": \"2000\", \"esOculto\": true }\r\n]",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/api/Problemas/{{idProblemaDoble}}/casos/sincronizar",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"api",
+						"Problemas",
+						"{{idProblemaDoble}}",
+						"casos",
+						"sincronizar"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://localhost:7041",
+			"type": "string"
+		},
+		{
+			"key": "idProblemaSuma",
+			"value": ""
+		},
+		{
+			"key": "idProblemaDoble",
+			"value": ""
+		}
+	]
+}
