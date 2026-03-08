@@ -1,6 +1,7 @@
 using Application.Interfaces;
 using Application.Persistence;
 using Infrastructure.ExternalServices.Judge0;
+using Infrastructure.ExternalServices.Seguridad;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,10 @@ public static class DependencyInjection
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(configuration.GetConnectionString("DefaultConnection"),
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+
+        // Seguridad
+        services.AddScoped<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<ITokenService, TokenService>();
 
         // Configuración de Judge0
         services.Configure<ConfiguracionJudge0>(

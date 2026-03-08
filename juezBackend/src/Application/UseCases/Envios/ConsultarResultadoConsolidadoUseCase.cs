@@ -13,13 +13,19 @@ public class ConsultarResultadoConsolidadoUseCase(
     IServicioJuez servicioJuez, 
     ApplicationDbContext context)
 {
-    public async Task<VeredictoCompetenciaDto?> EjecutarAsync(Guid envioId)
+    public async Task<VeredictoCompetenciaDto?> EjecutarAsync(Guid envioId, Guid usuarioSolicitanteId, RolUsuario rolSolicitante)
     {
         var envio = await context.Envios
             .Include(e => e.DetalleEnvios)
             .FirstOrDefaultAsync(e => e.Id == envioId);
 
         if (envio == null) return null;
+
+        // Regla de Oro: Solo el dueño del envío o un Admin pueden ver el veredicto detallado.
+        if (rolSolicitante != RolUsuario.Admin && envio.UsuarioId != usuarioSolicitanteId)
+        {
+            throw new UnauthorizedAccessException("No tienes permiso para ver el resultado de este envío.");
+        }
 
         bool procesando = false;
         int casosPasados = 0;

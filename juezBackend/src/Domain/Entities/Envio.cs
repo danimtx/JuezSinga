@@ -12,5 +12,8 @@ public class Envio
     public Guid? ProblemaId { get; set; }
     public Problema? Problema { get; set; }
 
+    public Guid? UsuarioId { get; set; }
+    public Usuario? Usuario { get; set; }
+
     public ICollection<DetalleEnvio> DetalleEnvios { get; set; } = new List<DetalleEnvio>();
 }

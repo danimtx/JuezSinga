@@ -17,7 +17,7 @@ public class EvaluarEnvioCompetenciaUseCase(
     // Semáforo para no saturar la API gratuita durante las pruebas (máximo 2 peticiones concurrentes)
     private static readonly SemaphoreSlim Semaphore = new(2);
 
-    public async Task<Guid> EjecutarAsync(CrearEnvioCompetenciaDto peticion)
+    public async Task<Guid> EjecutarAsync(CrearEnvioCompetenciaDto peticion, Guid usuarioId)
     {
         // 1. Validar existencia del Problema
         var problema = await context.Problemas
@@ -31,7 +31,7 @@ public class EvaluarEnvioCompetenciaUseCase(
         // 2. Validar existencia del Lenguaje (en nuestra tabla local)
         var lenguajeExiste = await context.Lenguajes
             .AnyAsync(l => l.CodigoJudge0 == peticion.LenguajeId);
-        
+
         if (!lenguajeExiste)
             throw new KeyNotFoundException($"El lenguaje con código {peticion.LenguajeId} no está soportado o no ha sido sincronizado.");
 
@@ -39,6 +39,7 @@ public class EvaluarEnvioCompetenciaUseCase(
         var envio = new Envio
         {
             ProblemaId = peticion.ProblemaId,
+            UsuarioId = usuarioId, // Asignamos el usuario autenticado
             CodigoFuente = peticion.CodigoFuente,
             LenguajeId = peticion.LenguajeId,
             VeredictoGlobal = "Processing"
@@ -46,35 +47,45 @@ public class EvaluarEnvioCompetenciaUseCase(
         context.Envios.Add(envio);
         await context.SaveChangesAsync();
 
-        // 2. Disparar evaluaciones en paralelo
-        var tareas = problema.CasosDePrueba.Select(async caso =>
+        try 
         {
-            await Semaphore.WaitAsync();
-            try
+            // 2. Disparar evaluaciones en paralelo
+            var tareas = problema.CasosDePrueba.Select(async caso =>
             {
-                var envioTecnico = new Envio { CodigoFuente = peticion.CodigoFuente, LenguajeId = peticion.LenguajeId, EntradaEstandar = caso.Entrada };
-                var token = await servicioJuez.CrearEnvioAsync(envioTecnico, problema.LimiteTiempo, problema.LimiteMemoria, caso.SalidaEsperada);
-
-                // Guardar detalle individual
-                var detalle = new DetalleEnvio
+                await Semaphore.WaitAsync();
+                try
                 {
-                    EnvioId = envio.Id,
-                    CasoDePruebaId = caso.Id,
-                    Token = token,
-                    Veredicto = "In Queue"
-                };
-                return detalle;
-            }
-            finally
-            {
-                Semaphore.Release();
-            }
-        });
+                    var envioTecnico = new Envio { CodigoFuente = peticion.CodigoFuente, LenguajeId = peticion.LenguajeId, EntradaEstandar = caso.Entrada };
+                    var token = await servicioJuez.CrearEnvioAsync(envioTecnico, problema.LimiteTiempo, problema.LimiteMemoria, caso.SalidaEsperada);
 
-        var detalles = await Task.WhenAll(tareas);
-        context.DetalleEnvios.AddRange(detalles);
-        await context.SaveChangesAsync();
+                    // Guardar detalle individual
+                    var detalle = new DetalleEnvio
+                    {
+                        EnvioId = envio.Id,
+                        CasoDePruebaId = caso.Id,
+                        Token = token,
+                        Veredicto = "In Queue"
+                    };
+                    return detalle;
+                }
+                finally
+                {
+                    Semaphore.Release();
+                }
+            });
 
-        return envio.Id;
+            var detalles = await Task.WhenAll(tareas);
+            context.DetalleEnvios.AddRange(detalles);
+            await context.SaveChangesAsync();
+
+            return envio.Id;
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            // Limpieza: Si la API falló por cuota, eliminamos el envío de nuestra DB
+            context.Envios.Remove(envio);
+            await context.SaveChangesAsync();
+            throw; // Re-lanzamos para que el controlador lo maneje
+        }
     }
 }

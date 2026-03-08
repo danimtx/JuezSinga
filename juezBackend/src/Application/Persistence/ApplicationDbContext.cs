@@ -13,28 +13,25 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Envio> Envios { get; set; }
     public DbSet<Lenguaje> Lenguajes { get; set; }
     public DbSet<DetalleEnvio> DetalleEnvios { get; set; }
+    public DbSet<Usuario> Usuarios { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configuración de Problema
-        modelBuilder.Entity<Problema>(entity =>
+        // Configuración de Usuario
+        modelBuilder.Entity<Usuario>(entity =>
         {
             entity.HasKey(e => e.Id);
-            entity.Property(e => e.Titulo).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Descripcion).IsRequired();
-            entity.HasQueryFilter(p => !p.EsEliminado); // Filtro global para borrado lógico
-        });
-
-        // Configuración de CasoDePrueba
-        modelBuilder.Entity<CasoDePrueba>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.HasOne(e => e.Problema)
-                  .WithMany(p => p.CasosDePrueba)
-                  .HasForeignKey(e => e.ProblemaId)
-                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(e => e.UserName).IsUnique();
+            entity.Property(e => e.Nombre).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Apellidos).IsRequired().HasMaxLength(100);
+            
+            // Configuración de JSONB para Metadatos (EF Core 9)
+            entity.OwnsOne(e => e.Metadatos, builder =>
+            {
+                builder.ToJson();
+            });
         });
 
         // Configuración de Envio
@@ -44,6 +41,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.HasOne(e => e.Problema)
                   .WithMany(p => p.Envios)
                   .HasForeignKey(e => e.ProblemaId)
+                  .OnDelete(DeleteBehavior.SetNull);
+
+            // Relación con Usuario
+            entity.HasOne(e => e.Usuario)
+                  .WithMany(u => u.Envios)
+                  .HasForeignKey(e => e.UsuarioId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.SetNull);
         });
 

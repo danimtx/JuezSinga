@@ -1,5 +1,8 @@
+using System.Security.Claims;
 using Application.DTOs.Envio;
 using Application.UseCases.Envios;
+using Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers;
@@ -27,20 +30,23 @@ public class EnviosController(
     /// <summary>
     /// Modo Competencia: Inicia la evaluación de un código contra todos los casos de prueba.
     /// </summary>
-    /// <param name="peticion">Contiene el ID del problema (Guid), código fuente y ID del lenguaje (int).</param>
     /// <returns>Retorna el ID (GUID) para el envío. Use este ID para consultar el resultado global.</returns>
     /// <response code="200">Envío recibido y comenzando evaluación.</response>
     /// <response code="404">Si el problema o el lenguaje no existen.</response>
     /// <response code="400">Si el problema no tiene casos de prueba configurados.</response>
+    /// <response code="429">Límite de peticiones al motor de evaluación excedido (Cuota o Rate Limit).</response>
     [HttpPost("Problema")]
+    [Authorize]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<ActionResult<Guid>> CrearCompetencia([FromBody] CrearEnvioCompetenciaDto peticion)
     {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         try 
         {
-            var idEnvio = await evaluarCompetencia.EjecutarAsync(peticion);
+            var idEnvio = await evaluarCompetencia.EjecutarAsync(peticion, userId);
             return Ok(idEnvio);
         }
         catch (KeyNotFoundException ex)
@@ -51,6 +57,10 @@ public class EnviosController(
         {
             return BadRequest(ex.Message);
         }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            return StatusCode(429, "El motor de evaluación ha alcanzado su límite. Intente más tarde.");
+        }
     }
 
     /// <summary>
@@ -59,13 +69,25 @@ public class EnviosController(
     /// <param name="idEnvio">ID (GUID) retornado por el endpoint de creación.</param>
     /// <returns>Veredicto global en inglés (Accepted, Wrong Answer, etc.) y detalle de casos.</returns>
     [HttpGet("Resultado/{idEnvio}")]
+    [Authorize]
     [ProducesResponseType(typeof(VeredictoCompetenciaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<VeredictoCompetenciaDto>> ConsultarResultadoGlobal(Guid idEnvio)
     {
-        var resultado = await consultarConsolidado.EjecutarAsync(idEnvio);
-        if (resultado == null) return NotFound("No se encontró el envío.");
-        return Ok(resultado);
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userRol = Enum.Parse<RolUsuario>(User.FindFirstValue(ClaimTypes.Role)!);
+
+        try
+        {
+            var resultado = await consultarConsolidado.EjecutarAsync(idEnvio, userId, userRol);
+            if (resultado == null) return NotFound("No se encontró el envío.");
+            return Ok(resultado);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
     }
 
     /// <summary>

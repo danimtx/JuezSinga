@@ -65,6 +65,12 @@ public class ServicioJuezRapidApi : IServicioJuez
         AgregarCabecerasRapidApi(peticion);
 
         var respuesta = await _clienteHttp.SendAsync(peticion);
+        
+        if (respuesta.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            throw new HttpRequestException("Límite de la API de Judge0 excedido (429). Intente más tarde.", null, System.Net.HttpStatusCode.TooManyRequests);
+        }
+
         respuesta.EnsureSuccessStatusCode();
 
         var resultado = await respuesta.Content.ReadFromJsonAsync<RespuestaEnvioCreadoJudge0>();
