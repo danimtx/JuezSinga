@@ -11,7 +11,8 @@ namespace Application.UseCases.Envios;
 /// </summary>
 public class ConsultarResultadoConsolidadoUseCase(
     IServicioJuez servicioJuez, 
-    ApplicationDbContext context)
+    ApplicationDbContext context,
+    INotificacionService notificacionService)
 {
     public async Task<VeredictoCompetenciaDto?> EjecutarAsync(Guid envioId, Guid usuarioSolicitanteId, RolUsuario rolSolicitante)
     {
@@ -59,7 +60,25 @@ public class ConsultarResultadoConsolidadoUseCase(
         // Actualizar veredicto global en DB si ya no está procesando
         if (!procesando)
         {
+            var cambioAEstadoFinal = envio.VeredictoGlobal == "Processing" || string.IsNullOrEmpty(envio.VeredictoGlobal);
             envio.VeredictoGlobal = veredictoGlobal;
+
+            if (cambioAEstadoFinal)
+            {
+                // 1. Notificar al usuario que su veredicto está listo
+                await notificacionService.NotificarNuevoVeredictoAsync(envio.UsuarioId!.Value, new { 
+                    envioId = envio.Id, 
+                    veredicto = veredictoGlobal,
+                    casosPasados,
+                    totalCasos = envio.DetalleEnvios.Count
+                });
+
+                // 2. Si es Accepted y es de competencia, notificar actualización de Scoreboard
+                if (veredictoGlobal == "Accepted" && envio.CompetenciaId.HasValue)
+                {
+                    await notificacionService.NotificarActualizacionScoreboardAsync(envio.CompetenciaId.Value);
+                }
+            }
         }
         
         await context.SaveChangesAsync();

@@ -1,11 +1,13 @@
 using Application.DTOs.Problema;
 using Application.UseCases.Problemas;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProblemasController(GestionProblemasUseCase gestionProblemas) : ControllerBase
 {
     /// <summary>
@@ -18,6 +20,7 @@ public class ProblemasController(GestionProblemasUseCase gestionProblemas) : Con
     /// </param>
     /// <returns>El ID (GUID) del problema creado.</returns>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
     public async Task<ActionResult<Guid>> Crear([FromBody] CrearProblemaDto dto)
     {
@@ -59,6 +62,7 @@ public class ProblemasController(GestionProblemasUseCase gestionProblemas) : Con
     /// - **unidad**: 1 = Kilobytes (KB), 2 = Megabytes (MB).
     /// </param>
     [HttpPut("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> Actualizar(Guid id, [FromBody] CrearProblemaDto dto)
     {
         try {
@@ -73,6 +77,7 @@ public class ProblemasController(GestionProblemasUseCase gestionProblemas) : Con
     /// Elimina lógicamente un problema.
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> Eliminar(Guid id)
     {
         try {
@@ -87,6 +92,7 @@ public class ProblemasController(GestionProblemasUseCase gestionProblemas) : Con
     /// Reemplaza todos los casos de prueba de un problema por una lista nueva.
     /// </summary>
     [HttpPost("{id}/casos/sincronizar")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> SincronizarCasos(Guid id, [FromBody] IEnumerable<CrearCasoDePruebaDto> casos)
     {
         try {
@@ -101,6 +107,7 @@ public class ProblemasController(GestionProblemasUseCase gestionProblemas) : Con
     /// Agrega casos de prueba adicionales sin borrar los anteriores.
     /// </summary>
     [HttpPost("{id}/casos")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult> AgregarCasos(Guid id, [FromBody] IEnumerable<CrearCasoDePruebaDto> casos)
     {
         try {

@@ -11,15 +11,33 @@ namespace WebApi.Controllers;
 [Route("api/[controller]")]
 public class EnviosController(
     ProcesarEnvioCasoDeUso procesarEnvio,
+    ListarEnviosUseCase listarEnvios,
     EvaluarEnvioCompetenciaUseCase evaluarCompetencia,
     ConsultarResultadoConsolidadoUseCase consultarConsolidado,
     ConsultarVeredictoCasoDeUso consultarVeredicto) : ControllerBase
 {
     /// <summary>
+    /// Obtiene el historial de envíos. Estudiantes/Equipos solo ven los suyos. Admin ve todos.
+    /// </summary>
+    /// <param name="competenciaId">Opcional: Filtrar envíos de una competencia específica.</param>
+    [HttpGet]
+    [Authorize]
+    [ProducesResponseType(typeof(IEnumerable<EnvioHistorialDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<EnvioHistorialDto>>> Listar([FromQuery] Guid? competenciaId)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var userRol = Enum.Parse<RolUsuario>(User.FindFirstValue(ClaimTypes.Role)!);
+
+        var resultados = await listarEnvios.EjecutarAsync(userId, userRol, competenciaId);
+        return Ok(resultados);
+    }
+
+    /// <summary>
     /// [INTERNO/DEBUG] Envía código directamente con parámetros personalizados.
     /// </summary>
     /// <remarks>NO USAR EN EL FRONTEND. Solo para pruebas rápidas del motor.</remarks>
     [HttpPost("Prueba")]
+    [Authorize(Roles = "Admin")] // Solo Admins para pruebas internas
     [ProducesResponseType(typeof(CrearEnvioRespuestaDto), StatusCodes.Status200OK)]
     public async Task<ActionResult<CrearEnvioRespuestaDto>> CrearPrueba([FromBody] CrearEnvioPeticionDto peticion)
     {
@@ -95,6 +113,7 @@ public class EnviosController(
     /// </summary>
     /// <remarks>NO USAR EN EL FRONTEND. Útil para verificar estados crudos.</remarks>
     [HttpGet("Token/{token}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(VeredictoRespuestaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<VeredictoRespuestaDto>> ConsultarPorToken(string token)

@@ -16,8 +16,11 @@ public class GenerarEquiposMasivoCasoDeUso(
     private const string PassPrefix = "TJ-";
     private readonly Random _random = new();
 
-    public async Task<IEnumerable<CredencialesEquipoDto>> EjecutarAsync(List<CrearEquipoDto> equiposDto)
+    public async Task<IEnumerable<CredencialesEquipoDto>> EjecutarAsync(Guid competenciaId, List<CrearEquipoDto> equiposDto)
     {
+        var competencia = await context.Competencias.FindAsync(competenciaId)
+            ?? throw new KeyNotFoundException("Competencia no encontrada");
+
         var resultados = new List<CredencialesEquipoDto>();
 
         foreach (var dto in equiposDto)
@@ -28,6 +31,7 @@ public class GenerarEquiposMasivoCasoDeUso(
 
             var usuario = new Usuario
             {
+                Id = Guid.NewGuid(),
                 UserName = user,
                 PasswordHash = passwordHasher.Hash(rawPass),
                 Rol = RolUsuario.Equipo,
@@ -42,6 +46,14 @@ public class GenerarEquiposMasivoCasoDeUso(
             };
 
             context.Usuarios.Add(usuario);
+
+            // Inscripción automática al contest
+            context.CompetenciaParticipantes.Add(new CompetenciaParticipante
+            {
+                CompetenciaId = competenciaId,
+                UsuarioId = usuario.Id
+            });
+
             resultados.Add(new CredencialesEquipoDto(dto.NombreEquipo, user, rawPass));
         }
 

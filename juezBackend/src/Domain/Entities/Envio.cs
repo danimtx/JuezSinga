@@ -15,5 +15,10 @@ public class Envio
     public Guid? UsuarioId { get; set; }
     public Usuario? Usuario { get; set; }
 
+    public Guid? CompetenciaId { get; set; }
+    public Competencia? Competencia { get; set; }
+
+    public DateTime FechaEnvio { get; set; } = DateTime.UtcNow;
+
     public ICollection<DetalleEnvio> DetalleEnvios { get; set; } = new List<DetalleEnvio>();
 }

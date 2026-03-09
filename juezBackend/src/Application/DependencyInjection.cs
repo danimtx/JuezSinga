@@ -1,4 +1,5 @@
 using Application.UseCases.Auth;
+using Application.UseCases.Competencias;
 using Application.UseCases.Envios;
 using Application.UseCases.Lenguajes;
 using Application.UseCases.Problemas;
@@ -13,6 +14,7 @@ public static class DependencyInjection
     {
         services.AddScoped<ObtenerLenguajesCasoDeUso>();
         services.AddScoped<ProcesarEnvioCasoDeUso>();
+        services.AddScoped<ListarEnviosUseCase>();
         services.AddScoped<ConsultarVeredictoCasoDeUso>();
         services.AddScoped<GestionProblemasUseCase>();
         services.AddScoped<EvaluarEnvioCompetenciaUseCase>();
@@ -27,6 +29,11 @@ public static class DependencyInjection
         services.AddScoped<CambiarPasswordCasoDeUso>();
         services.AddScoped<ObtenerPerfilCasoDeUso>();
         services.AddScoped<ListarUsuariosCasoDeUso>();
+
+        // Competencias
+        services.AddScoped<GestionCompetenciasUseCase>();
+        services.AddScoped<CalcularScoreboardUseCase>();
+        services.AddScoped<GestionAclaracionesUseCase>();
         
         return services;
     }

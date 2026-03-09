@@ -1,11 +1,13 @@
 using Application.DTOs.Lenguaje;
 using Application.UseCases.Lenguajes;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class LenguajesController(ObtenerLenguajesCasoDeUso obtenerLenguajes) : ControllerBase
 {
     /// <summary>

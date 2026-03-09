@@ -1,36 +1,42 @@
 # Contexto del Proyecto: JuezSinGa (Backend)
 
 ## 1. Visión General
-JuezSinGa es una API RESTful desarrollada para funcionar como el motor de evaluación de un juez de programación competitiva universitario (estilo ICPC) para la Universidad Privada Domingo Savio. El sistema recibe código fuente de los estudiantes, lo compila y lo ejecuta de forma segura contra casos de prueba ocultos para emitir un veredicto oficial (Accepted, Time Limit Exceeded, Compilation Error, etc.).
+JuezSinGa es un motor de evaluación de alto rendimiento para programación competitiva (estilo ICPC). El sistema permite gestionar competencias (contests) en tiempo real, evaluando código fuente de forma segura contra casos de prueba ocultos, gestionando límites de tiempo/memoria y calculando rankings automáticos bajo reglas internacionales.
 
 ## 2. Stack Tecnológico
-* **Framework:** .NET 9 (C#).
-* **Arquitectura:** Clean Architecture (Domain, Application, Infrastructure, WebApi) (Usar Patrones de diseño en casos que se lo requiera).
-* **Base de Datos:** PostgreSQL (usando Entity Framework Core).
-* **Motor de Evaluación:** Judge0 CE. 
-  * *Fase actual (MVP):* Consumo de la API de Judge0 a través de RapidAPI.
-  * *Fase de producción:* Despliegue en contenedores Docker nativos en Linux aislando recursos con cgroups v1.
-  * *Repo *
+*   **Framework:** .NET 9 (C#).
+*   **Arquitectura:** Clean Architecture (Domain, Application, Infrastructure, WebApi).
+*   **Base de Datos:** PostgreSQL (Hospedado en Supabase) usando Entity Framework Core 9.
+*   **Motor de Evaluación:** Judge0 CE (Integrado vía RapidAPI o Self-hosted).
+*   **Seguridad:** JWT (JSON Web Tokens) con Refresh Tokens y Hashing BCrypt.
+*   **Tiempo Real:** SignalR para veredictos, aclaraciones y actualización de Scoreboard.
 
-## 3. Dinámica del Equipo y Reglas de Código
-El desarrollo se lleva a cabo en un equipo varias personas con un flujo estricto de Git. Todo el código pasa por revisión mediante Pull Requests antes de hacer merge a la rama principal. 
-Por lo tanto, el código generado debe:
-* Ser extremadamente legible y seguir principios SOLID.
-* Respetar estrictamente las dependencias de la Arquitectura Limpia (Application no puede depender de Infrastructure, el Dominio no puede tener dependencias externas).
-* No dejar credenciales quemadas (hardcodeadas) en el código; usar siempre `appsettings.json` o variables de entorno.
-* Usar inyección de dependencias nativa de .NET.
+## 3. Características Principales (PRD)
+*   **Gestión de Identidad:** Sistema de roles (Admin, Estudiante, Equipo) con metadatos flexibles almacenados en formato JSONB.
+*   **Generador de Competencia:** Creación masiva de cuentas de equipo con credenciales aleatorias seguras y formato personalizado (`singaDMTX-XXXXX`).
+*   **Motor de Evaluación Paralelo:** Evaluación simultánea de múltiples casos de prueba usando semáforos de control para optimizar el uso de APIs externas (Quitar semaforos para prod y Judge0 CE esta corriendo en un servidor propio).
+*   **Lógica ICPC:** Scoreboard automático que calcula problemas resueltos y penalizaciones por tiempo/errores.
+*   **Scoreboard Freeze:** Capacidad de congelar el ranking público para añadir suspenso al final de la competencia.
+*   **Sistema de Aclaraciones:** Chat bidireccional entre competidores y jueces con capacidad de anuncios globales.
+*   **Resiliencia:** Middleware global de excepciones y limpieza automática de base de datos ante fallos de cuota en motores externos (Error 429 en caso de estar usando API con limites).
 
-## 4. Dominio Principal (Core)
-El sistema girará en torno a simular un entorno estricto de competencias. Las entidades principales a modelar incluyen:
-* **Submission (Envío):** Rastrea el código enviado, el lenguaje (C++, C#, Python), el tiempo de ejecución, el consumo de memoria y el token de Judge0.
-* **Problem (Problema):** Define los límites estrictos de tiempo (`TimeLimit`) y memoria (`MemoryLimit`).
-* **TestCase (Caso de Prueba):** Entradas y salidas esperadas, fuertemente enfocadas en casos "ocultos" para evitar trampas.
-* **Enums de Veredicto:** Representación exacta de los estados (In Queue, Processing, Accepted, Wrong Answer, TLE, MLE, CE).
+## 4. Estructura de Datos
+*   **Identificadores:** Uso estricto de **GUID** para todos los IDs de base de datos.
+*   **Unidades:** Tiempo en **Segundos**, Memoria en **Kilobytes**.
+## 5. Motor de Evaluación: Judge0 CE
+El núcleo de la evaluación técnica se basa en **Judge0 CE**, un motor de ejecución de código de código abierto y robusto.
+*   **Repositorio Oficial:** [https://github.com/judge0/judge0.git](https://github.com/judge0/judge0.git)
 
-## 5. Objetivo Actual del Agente
-Actuar como un desarrollador Senior en .NET. Recibirás instrucciones para generar entidades, casos de uso, repositorios o controladores. Tu tarea es generar el código exacto, indicando en qué capa y carpeta de la estructura debe ubicarse cada archivo, sin romper la abstracción del motor externo (Judge0).
+### Estrategia de Despliegue (Desarrollo vs. Producción)
+1.  **Fase de Desarrollo (Actual):**
+    *   Se utiliza la API de Judge0 a través de **RapidAPI**.
+    *   **Limitación:** El plan gratuito tiene cuotas mensuales y límites de velocidad (Rate Limit).
+    *   **Control de Concurrencia:** El backend implementa un `SemaphoreSlim(2)` en los casos de uso de evaluación para evitar errores `429 (Too Many Requests)` al disparar múltiples peticiones en paralelo.
 
-## comandos para la migracion
+2.  **Fase de Producción (Recomendado):**
+    *   **Instalación:** Desplegar Judge0 CE en un servidor local o VPS con **Ubuntu Linux** utilizando **Docker y Docker Compose**.
+    *   **Ventajas:** Peticiones ilimitadas, latencia mínima, mayor seguridad y control total sobre los recursos del sistema.
+    *   **Cambios en el Backend:**
+        1.  **Configuración:** Actualizar `BaseUrl` en el archivo `appsettings.json` para que apunte a la IP del servidor local (ej: `http://192.168.1.50:2358`).
+        2.  **Optimización:** Eliminar el `SemaphoreSlim` en `EvaluarEnvioCompetenciaUseCase.cs` para permitir que `Task.WhenAll` envíe todos los casos de prueba de forma masiva y simultánea, aprovechando toda la potencia del hardware propio.
 
-1. dotnet ef migrations add Inicial -p src/Infrastructure -s src/WebApi
-2. dotnet ef database update -p src/Infrastructure -s src/WebApi

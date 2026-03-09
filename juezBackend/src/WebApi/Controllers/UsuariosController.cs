@@ -11,7 +11,6 @@ namespace WebApi.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public class UsuariosController(
-    GenerarEquiposMasivoCasoDeUso generarEquiposMasivo,
     ActualizarPerfilCasoDeUso actualizarPerfil,
     CambiarPasswordCasoDeUso cambiarPassword,
     ObtenerPerfilCasoDeUso obtenerPerfil,
@@ -42,18 +41,6 @@ public class UsuariosController(
     {
         var usuarios = await listarUsuarios.EjecutarAsync(rol);
         return Ok(usuarios);
-    }
-
-    /// <summary>
-    /// [Solo Admin] Genera cuentas de equipo en masa.
-    /// </summary>
-    [HttpPost("Equipos/Masivo")]
-    [Authorize(Roles = "Admin")]
-    [ProducesResponseType(typeof(IEnumerable<CredencialesEquipoDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<CredencialesEquipoDto>>> GenerarEquipos([FromBody] List<CrearEquipoDto> equipos)
-    {
-        var resultados = await generarEquiposMasivo.EjecutarAsync(equipos);
-        return Ok(resultados);
     }
 
     /// <summary>

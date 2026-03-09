@@ -8,15 +8,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Application.UseCases.Envios;
 
 /// <summary>
-/// Orquesta la evaluación de un envío contra múltiples casos de prueba de la base de datos.
+/// VERSION DE PRODUCCIÓN (Sin Semáforos).
+/// Úsela cuando el motor Judge0 CE esté corriendo en un servidor local/propio sin límites de API.
 /// </summary>
-public class EvaluarEnvioCompetenciaUseCase(
+public class EvaluarEnvioCompetenciaUseCaseSinSemaforo(
     IServicioJuez servicioJuez, 
     ApplicationDbContext context)
 {
-    // Semáforo para no saturar la API gratuita durante las pruebas (máximo 2 peticiones concurrentes)
-    private static readonly SemaphoreSlim Semaphore = new(2);
-
     public async Task<Guid> EjecutarAsync(CrearEnvioCompetenciaDto peticion, Guid usuarioId)
     {
         // 1. Validar existencia del Problema
@@ -50,7 +48,7 @@ public class EvaluarEnvioCompetenciaUseCase(
         {
             ProblemaId = peticion.ProblemaId,
             UsuarioId = usuarioId,
-            CompetenciaId = competenciaId, // Se vincula automáticamente si está en contest
+            CompetenciaId = competenciaId, 
             CodigoFuente = peticion.CodigoFuente,
             LenguajeId = peticion.LenguajeId,
             VeredictoGlobal = "Processing",
@@ -59,45 +57,36 @@ public class EvaluarEnvioCompetenciaUseCase(
         context.Envios.Add(envio);
         await context.SaveChangesAsync();
 
-        try 
+        // 2. Disparar evaluaciones en paralelo MASIVO (Sin restricciones de semáforo)
+        var tareas = problema.CasosDePrueba.Select(async caso =>
         {
-            // 2. Disparar evaluaciones en paralelo
-            var tareas = problema.CasosDePrueba.Select(async caso =>
+            var envioTecnico = new Envio 
+            { 
+                CodigoFuente = peticion.CodigoFuente, 
+                LenguajeId = peticion.LenguajeId, 
+                EntradaEstandar = caso.Entrada 
+            };
+
+            // Envío directo a la potencia del hardware local
+            var token = await servicioJuez.CrearEnvioAsync(
+                envioTecnico, 
+                problema.LimiteTiempo, 
+                problema.LimiteMemoria, 
+                caso.SalidaEsperada);
+
+            return new DetalleEnvio
             {
-                await Semaphore.WaitAsync();
-                try
-                {
-                    var envioTecnico = new Envio { CodigoFuente = peticion.CodigoFuente, LenguajeId = peticion.LenguajeId, EntradaEstandar = caso.Entrada };
-                    var token = await servicioJuez.CrearEnvioAsync(envioTecnico, problema.LimiteTiempo, problema.LimiteMemoria, caso.SalidaEsperada);
+                EnvioId = envio.Id,
+                CasoDePruebaId = caso.Id,
+                Token = token,
+                Veredicto = "In Queue"
+            };
+        });
 
-                    // Guardar detalle individual
-                    var detalle = new DetalleEnvio
-                    {
-                        EnvioId = envio.Id,
-                        CasoDePruebaId = caso.Id,
-                        Token = token,
-                        Veredicto = "In Queue"
-                    };
-                    return detalle;
-                }
-                finally
-                {
-                    Semaphore.Release();
-                }
-            });
+        var detalles = await Task.WhenAll(tareas);
+        context.DetalleEnvios.AddRange(detalles);
+        await context.SaveChangesAsync();
 
-            var detalles = await Task.WhenAll(tareas);
-            context.DetalleEnvios.AddRange(detalles);
-            await context.SaveChangesAsync();
-
-            return envio.Id;
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-        {
-            // Limpieza: Si la API falló por cuota, eliminamos el envío de nuestra DB
-            context.Envios.Remove(envio);
-            await context.SaveChangesAsync();
-            throw; // Re-lanzamos para que el controlador lo maneje
-        }
+        return envio.Id;
     }
 }
